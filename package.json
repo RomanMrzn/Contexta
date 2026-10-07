@@ -1,0 +1,21 @@
+{
+  "name": "open-anything",
+  "private": true,
+  "engines": {
+    "node": ">=18",
+    "pnpm": ">=8"
+  },
+  "packageManager": "pnpm@9.0.0",
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test"
+  },
+  "devDependencies": {
+    "turbo": "^1.13.2",
+    "typescript": "^5.4.5",
+    "prettier": "^3.2.5"
+  }
+}
