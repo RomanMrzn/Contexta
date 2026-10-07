@@ -1,86 +1,36 @@
-# OpenAnything
+This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
-A universal file viewer and file manager that runs as a web app (PWA) and a desktop app (Windows, macOS, Linux) from one shared React + TypeScript codebase, backed by Supabase.
+## Getting Started
 
-## Overview
-OpenAnything allows you to view and manage your files securely across devices. It features:
-- **Universal Viewing**: Support for PDF, DOCX, EPUB, Spreadsheets, Markdown, and more.
-- **Guest Mode**: Open local files instantly without an account, processing entirely locally.
-- **Cloud Sync**: Save files securely to your account for cross-device access.
-- **Cross-Platform**: Run as a modern web app, an offline-capable PWA, or a native desktop app.
+First, run the development server:
 
-## Architecture
-
-```mermaid
-graph TD
-    A[Web App / PWA (apps/web)] --> C[Shared UI & Logic (packages/app)]
-    B[Desktop App (apps/desktop)] --> C
-    C --> D[Supabase Backend]
-    C --> E[Platform Adapters (Web / Electron)]
-```
-
-- **Monorepo**: Powered by `pnpm` workspaces and Turborepo.
-- **Shared App (`packages/app`)**: Contains 95% of the codebase (React, Zustand, TanStack Query, Tailwind).
-- **Apps**: `apps/web` (Vite shell) and `apps/desktop` (Electron shell) simply consume the shared app and inject platform-specific capabilities.
-- **Backend**: Supabase provides Auth, Database (Postgres), Storage, and Row Level Security.
-- **API (`apps/api`)**: A minimal Node.js service for elevated operations (account deletion, trash purge) using the Supabase Service Role key.
-
-## Prerequisites
-- Node.js (>= 18)
-- pnpm (>= 8)
-- A Supabase Project (for backend features)
-
-## Setup
-
-1. **Install dependencies**:
-   ```bash
-   pnpm install
-   ```
-
-2. **Environment Variables**:
-   Copy `.env.example` to `.env` and fill in the required keys:
-   ```bash
-   cp .env.example .env
-   ```
-
-3. **Supabase Database**:
-   Apply migrations to your Supabase project (from `supabase/migrations/`).
-   ```bash
-   supabase link --project-ref <your-project-ref>
-   supabase db push
-   ```
-
-## Development Commands
-
-Run all apps in development mode:
 ```bash
-pnpm run dev
+npm run dev
+# or
+yarn dev
+# or
+pnpm dev
+# or
+bun dev
 ```
-*(Note: Until individual apps are scaffolded, this command will simply succeed with 0 tasks executed.)*
 
-Other workspace commands:
-- **Linting**: `pnpm run lint`
-- **Typechecking**: `pnpm run typecheck`
-- **Testing**: `pnpm run test`
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-## Build & Deploy
+You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
-- **Web Build**:
-  ```bash
-  pnpm --filter web build
-  ```
-- **Desktop Build (Electron)**:
-  ```bash
-  pnpm --filter desktop build
-  ```
-- **API Build**:
-  ```bash
-  pnpm --filter api build
-  ```
+This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
-## Testing
-- Unit & Integration: `pnpm run test`
-- E2E (Playwright): `pnpm run test:e2e`
+## Learn More
 
-## Security
-For full details on the security model (Electron IPC, Supabase RLS, upload sanitization), refer to `docs/SECURITY.md`.
+To learn more about Next.js, take a look at the following resources:
+
+- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
+- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+
+You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+
+## Deploy on Vercel
+
+The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+
+Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
