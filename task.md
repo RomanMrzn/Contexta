@@ -8,12 +8,12 @@
 - [x] Create .env.example for root and /server
 
 ## Phase 1 - Database
-- [ ] Write schema.prisma
-- [ ] Enable pgvector
-- [ ] Run initial migration
-- [ ] Add HNSW index migration
-- [ ] Set up Prisma client singleton
-- [ ] Write seed/health-check script for vector insert and cosine query
+- [x] Write schema.prisma (Added Document and DocumentChunk with vector)
+- [x] Enable pgvector (Enabled in schema via postgresqlExtensions)
+- [ ] Run initial migration (Blocked: needs Neon DB URL)
+- [ ] Add HNSW index migration (Blocked: needs initial migration)
+- [x] Set up Prisma client singleton
+- [x] Write seed/health-check script for vector insert and cosine query
 
 ## Phase 2 - Server Foundation
 - [ ] Env config
@@ -42,16 +42,16 @@
 - [ ] Summaries routes
 
 ## Phase 6 - Frontend
-- [ ] Clerk auth pages
-- [ ] (root) layout with sidebar/header
-- [ ] Dashboard
-- [ ] Document Library (upload dropzone, list, delete)
-- [ ] Document detail page (viewer + chat + summary)
-- [ ] Library-wide chat page
-- [ ] Multi-doc summaries page
-- [ ] app/api/chat/route.ts proxy
-- [ ] lib/api client
-- [ ] hooks, loading/error/empty states
+- [x] Clerk auth pages
+- [x] (root) layout with sidebar/header
+- [x] Dashboard
+- [x] Document Library (upload dropzone, list, delete)
+- [x] Document detail page (viewer + chat + summary)
+- [x] Library-wide chat page
+- [x] Multi-doc summaries page
+- [x] app/api/chat/route.ts proxy
+- [x] lib/api client
+- [x] hooks, loading/error/empty states
 
 ## Phase 7 - Hardening
 - [ ] Rate limiting
