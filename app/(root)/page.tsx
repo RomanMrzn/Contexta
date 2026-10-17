@@ -13,6 +13,29 @@ export default function DashboardPage() {
   const recentDocs = documents.slice(0, 4);
   const totalWords = documents.reduce((acc, curr) => acc + (curr.wordCount || 0), 0);
 
+  const getBadgeStyle = (type: string) => {
+    switch (type) {
+      case "pdf":
+        return "bg-rose-500/10 text-rose-400 border-rose-500/20";
+      case "docx":
+      case "doc":
+        return "bg-sky-500/10 text-sky-400 border-sky-500/20";
+      case "pptx":
+      case "ppt":
+        return "bg-orange-500/10 text-orange-400 border-orange-500/20";
+      case "epub":
+        return "bg-purple-500/10 text-purple-400 border-purple-500/20";
+      case "markdown":
+        return "bg-indigo-500/10 text-indigo-400 border-indigo-500/20";
+      case "csv":
+        return "bg-emerald-500/10 text-emerald-400 border-emerald-500/20";
+      case "json":
+        return "bg-amber-500/10 text-amber-400 border-amber-500/20";
+      default:
+        return "bg-blue-500/10 text-blue-400 border-blue-500/20";
+    }
+  };
+
   return (
     <div className="max-w-5xl mx-auto space-y-8 pb-12">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-neutral-800 pb-6">
@@ -43,7 +66,7 @@ export default function DashboardPage() {
           </div>
           <div>
             <h3 className="font-bold text-white text-base">Upload Document</h3>
-            <p className="text-xs text-neutral-400 mt-1">PDF, Markdown, TXT, CSV, JSON</p>
+            <p className="text-xs text-neutral-400 mt-1">PDF, Word, PPTX, EPUB, TXT</p>
           </div>
         </Link>
 
@@ -121,7 +144,7 @@ export default function DashboardPage() {
               >
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 uppercase">
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-semibold uppercase border ${getBadgeStyle(doc.fileType)}`}>
                       {doc.fileType}
                     </span>
                     <span className="text-xs text-neutral-500 flex items-center gap-1">

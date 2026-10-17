@@ -1,12 +1,24 @@
 import fs from 'fs';
 import path from 'path';
 
+export type DocumentType =
+  | 'pdf'
+  | 'docx'
+  | 'doc'
+  | 'pptx'
+  | 'ppt'
+  | 'epub'
+  | 'markdown'
+  | 'text'
+  | 'csv'
+  | 'json';
+
 export interface Document {
   id: string;
   title: string;
   filename: string;
   fileSize: number;
-  fileType: 'pdf' | 'markdown' | 'text' | 'csv' | 'json';
+  fileType: DocumentType;
   content: string;
   fileUrl?: string;
   summary?: string;

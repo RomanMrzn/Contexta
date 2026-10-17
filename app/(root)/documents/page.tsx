@@ -19,7 +19,8 @@ import {
   Plus,
   LayoutGrid,
   List,
-  ArrowRight
+  ArrowRight,
+  Presentation
 } from "lucide-react";
 import { useDocuments, Document } from "@/hooks/useDocuments";
 import { DeleteDocumentModal } from "@/components/DeleteDocumentModal";
@@ -79,6 +80,26 @@ export default function DocumentsPage() {
           bg: "bg-rose-500/10 text-rose-400 border-rose-500/20",
           icon: FileText,
           label: "PDF"
+        };
+      case "docx":
+      case "doc":
+        return {
+          bg: "bg-sky-500/10 text-sky-400 border-sky-500/20",
+          icon: FileText,
+          label: type.toUpperCase()
+        };
+      case "pptx":
+      case "ppt":
+        return {
+          bg: "bg-orange-500/10 text-orange-400 border-orange-500/20",
+          icon: Presentation,
+          label: type.toUpperCase()
+        };
+      case "epub":
+        return {
+          bg: "bg-purple-500/10 text-purple-400 border-purple-500/20",
+          icon: BookOpen,
+          label: "EPUB"
         };
       case "markdown":
         return {
@@ -239,8 +260,10 @@ export default function DocumentsPage() {
         const matchesType =
           selectedType === "all" ||
           (selectedType === "pdf" && doc.fileType === "pdf") ||
-          (selectedType === "markdown" && doc.fileType === "markdown") ||
-          (selectedType === "text" && doc.fileType === "text") ||
+          (selectedType === "word" && (doc.fileType === "docx" || doc.fileType === "doc")) ||
+          (selectedType === "slides" && (doc.fileType === "pptx" || doc.fileType === "ppt")) ||
+          (selectedType === "epub" && doc.fileType === "epub") ||
+          (selectedType === "markdown" && (doc.fileType === "markdown" || doc.fileType === "text")) ||
           (selectedType === "data" && (doc.fileType === "csv" || doc.fileType === "json"));
 
         return matchesSearch && matchesType;
@@ -305,7 +328,7 @@ export default function DocumentsPage() {
         ref={fileInputRef}
         onChange={(e) => e.target.files && handleFiles(e.target.files)}
         multiple
-        accept=".pdf,.txt,.md,.markdown,.csv,.json,.docx"
+        accept=".pdf,.doc,.docx,.ppt,.pptx,.epub,.txt,.md,.markdown,.csv,.json"
         className="hidden"
       />
 
@@ -350,7 +373,7 @@ export default function DocumentsPage() {
               {isUploading ? "Processing Document..." : "Drop your files here, or browse"}
             </h3>
             <p className="text-xs text-neutral-400 mt-1.5">
-              Supports <span className="text-neutral-300 font-medium">PDF, Markdown (.md), Plain Text (.txt), CSV, JSON</span> up to 32MB
+              Supports <span className="text-neutral-300 font-medium">PDF, Word (.docx, .doc), PowerPoint (.pptx), EPUB eBooks, Markdown, TXT, CSV, JSON</span> up to 32MB
             </p>
           </div>
 
@@ -448,8 +471,10 @@ export default function DocumentsPage() {
             {[
               { id: "all", label: "All" },
               { id: "pdf", label: "PDF" },
-              { id: "markdown", label: "Markdown" },
-              { id: "text", label: "Text" },
+              { id: "word", label: "Word" },
+              { id: "slides", label: "Slides" },
+              { id: "epub", label: "eBooks" },
+              { id: "markdown", label: "Text & MD" },
               { id: "data", label: "Data" }
             ].map((tab) => (
               <button

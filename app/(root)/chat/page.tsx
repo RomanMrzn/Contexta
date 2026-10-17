@@ -4,12 +4,62 @@ import { useChat } from "@ai-sdk/react";
 import { Send, Bot, User } from "lucide-react";
 
 export default function GlobalChatPage() {
-  const { messages, input, handleInputChange, handleSubmit, isLoading } = useChat({
+  const { messages, input, handleInputChange, handleSubmit, isLoading, setInput } = useChat({
     api: "/api/chat",
   });
 
+  const renderFormattedInline = (text: string) => {
+    const parts = text.split(/(\*\*.*?\*\*)/g);
+    return parts.map((part, i) => {
+      if (part.startsWith("**") && part.endsWith("**")) {
+        return <strong key={i} className="font-bold text-white">{part.slice(2, -2)}</strong>;
+      }
+      return part;
+    });
+  };
+
+  const renderChatMessage = (content: string) => {
+    const lines = content.split("\n");
+    return lines.map((line, idx) => {
+      if (line.startsWith("### ")) {
+        return (
+          <h4 key={idx} className="font-bold text-white text-sm mt-3 mb-1.5">
+            {renderFormattedInline(line.replace("### ", ""))}
+          </h4>
+        );
+      }
+      if (line.startsWith("> ")) {
+        return (
+          <blockquote key={idx} className="border-l-2 border-indigo-500 pl-3 my-2 italic text-neutral-300 text-xs bg-indigo-500/10 py-1.5 px-2.5 rounded-r">
+            {renderFormattedInline(line.replace(/^>\s*/, ""))}
+          </blockquote>
+        );
+      }
+      if (line.startsWith("• ") || line.startsWith("- ")) {
+        return (
+          <li key={idx} className="ml-5 list-disc text-neutral-300 my-1 text-xs">
+            {renderFormattedInline(line.replace(/^[•\-]\s*/, ""))}
+          </li>
+        );
+      }
+      if (/^\d+\.\s+/.test(line)) {
+        return (
+          <li key={idx} className="ml-5 list-decimal text-neutral-300 my-1 text-xs">
+            {renderFormattedInline(line.replace(/^\d+\.\s+/, ""))}
+          </li>
+        );
+      }
+      if (!line.trim()) return <div key={idx} className="h-2" />;
+      return (
+        <p key={idx} className="my-1 leading-relaxed">
+          {renderFormattedInline(line)}
+        </p>
+      );
+    });
+  };
+
   return (
-    <div className="max-w-4xl mx-auto h-[calc(100vh-8rem)] flex flex-col bg-neutral-950 border border-neutral-800 rounded-xl overflow-hidden">
+    <div className="max-w-4xl mx-auto h-[calc(100vh-8rem)] flex flex-col bg-neutral-950 border border-neutral-800 rounded-2xl overflow-hidden shadow-xl">
       <div className="p-6 border-b border-neutral-800 bg-neutral-900/50">
         <h1 className="text-xl font-bold text-white">Library Chat</h1>
         <p className="text-sm text-neutral-400">Ask questions across all documents in your library.</p>
@@ -17,24 +67,53 @@ export default function GlobalChatPage() {
 
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
         {messages.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center text-center space-y-4 text-neutral-500">
-            <Bot className="w-12 h-12 text-neutral-700" />
-            <p>I am Contexta AI. How can I help you explore your documents today?</p>
+          <div className="h-full flex flex-col items-center justify-center text-center max-w-md mx-auto space-y-5 text-neutral-400">
+            <div className="w-14 h-14 rounded-2xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center border border-indigo-500/20">
+              <Bot className="w-7 h-7" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-white">Explore Your Knowledge Base</h3>
+              <p className="text-xs text-neutral-400 mt-1">
+                Ask cross-document questions, request synthesis, or compare findings from your uploaded files.
+              </p>
+            </div>
+
+            <div className="w-full space-y-2 pt-2">
+              {[
+                "Summarize all documents in my library",
+                "What key technical takeaways are documented?",
+                "What topics and subjects are covered?",
+                "List action items and recommendations"
+              ].map((prompt, i) => (
+                <button
+                  key={i}
+                  onClick={() => setInput(prompt)}
+                  className="w-full text-left text-xs p-2.5 rounded-xl bg-neutral-900 hover:bg-neutral-850 border border-neutral-800 hover:border-indigo-500/40 text-neutral-300 hover:text-white transition-all flex items-center gap-2"
+                >
+                  <span className="text-indigo-400">👉</span>
+                  <span>{prompt}</span>
+                </button>
+              ))}
+            </div>
           </div>
         ) : (
           messages.map((m) => (
             <div key={m.id} className={`flex gap-4 ${m.role === "user" ? "justify-end" : "justify-start"}`}>
               {m.role !== "user" && (
-                <div className="w-8 h-8 rounded-full bg-indigo-500/20 flex items-center justify-center flex-shrink-0">
-                  <Bot className="w-5 h-5 text-indigo-400" />
+                <div className="w-8 h-8 rounded-full bg-indigo-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <Bot className="w-4 h-4 text-indigo-400" />
                 </div>
               )}
-              <div className={`max-w-[80%] rounded-2xl px-5 py-3 ${m.role === "user" ? "bg-indigo-600 text-white" : "bg-neutral-800 text-neutral-200"}`}>
-                <p className="whitespace-pre-wrap">{m.content}</p>
+              <div className={`max-w-[80%] rounded-2xl px-5 py-3 text-xs leading-relaxed ${m.role === "user" ? "bg-indigo-600 text-white" : "bg-neutral-900 border border-neutral-800 text-neutral-200"}`}>
+                {m.role === "user" ? (
+                  <p className="whitespace-pre-wrap">{m.content}</p>
+                ) : (
+                  <div>{renderChatMessage(m.content)}</div>
+                )}
               </div>
               {m.role === "user" && (
-                <div className="w-8 h-8 rounded-full bg-neutral-700 flex items-center justify-center flex-shrink-0">
-                  <User className="w-5 h-5 text-neutral-300" />
+                <div className="w-8 h-8 rounded-full bg-neutral-800 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <User className="w-4 h-4 text-neutral-300" />
                 </div>
               )}
             </div>

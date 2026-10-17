@@ -64,7 +64,11 @@ export default function DocumentDetailPage() {
   // Chat with Document using @ai-sdk/react
   const { messages, input, handleInputChange, handleSubmit, isLoading: isChatLoading, setInput } = useChat({
     api: "/api/chat",
-    body: { documentId },
+    body: {
+      documentId,
+      docTitle: doc?.title,
+      docContent: doc?.content ? doc.content.slice(0, 80000) : undefined,
+    },
   });
 
   // Load document from cache or API
@@ -170,6 +174,29 @@ export default function DocumentDetailPage() {
     return `${font} ${size}`;
   }, [fontFamily, fontSize]);
 
+  const getBadgeStyle = (type: string) => {
+    switch (type) {
+      case "pdf":
+        return "bg-rose-500/10 text-rose-400 border-rose-500/20";
+      case "docx":
+      case "doc":
+        return "bg-sky-500/10 text-sky-400 border-sky-500/20";
+      case "pptx":
+      case "ppt":
+        return "bg-orange-500/10 text-orange-400 border-orange-500/20";
+      case "epub":
+        return "bg-purple-500/10 text-purple-400 border-purple-500/20";
+      case "markdown":
+        return "bg-indigo-500/10 text-indigo-400 border-indigo-500/20";
+      case "csv":
+        return "bg-emerald-500/10 text-emerald-400 border-emerald-500/20";
+      case "json":
+        return "bg-amber-500/10 text-amber-400 border-amber-500/20";
+      default:
+        return "bg-blue-500/10 text-blue-400 border-blue-500/20";
+    }
+  };
+
   // Highlight search occurrences
   const renderFormattedContent = (content: string) => {
     if (!content) return null;
@@ -178,6 +205,21 @@ export default function DocumentDetailPage() {
     const lines = content.split("\n");
 
     return lines.map((line, idx) => {
+      // Horizontal Rule / Divider
+      if (line.trim() === "---" || line.trim() === "***") {
+        return <hr key={idx} className="my-8 border-neutral-800" />;
+      }
+      // Presentation Slide Divider
+      if (line.startsWith("## Slide ")) {
+        return (
+          <div key={idx} className="mt-8 mb-4 flex items-center gap-3">
+            <span className="px-3 py-1 rounded-lg bg-orange-500/10 text-orange-400 border border-orange-500/20 text-xs font-bold uppercase tracking-wider">
+              {line.replace("## ", "")}
+            </span>
+            <div className="h-px bg-neutral-800 flex-1" />
+          </div>
+        );
+      }
       // Header 1
       if (line.startsWith("# ")) {
         return (
@@ -287,6 +329,56 @@ export default function DocumentDetailPage() {
     );
   }
 
+  const renderFormattedInline = (text: string) => {
+    const parts = text.split(/(\*\*.*?\*\*)/g);
+    return parts.map((part, i) => {
+      if (part.startsWith("**") && part.endsWith("**")) {
+        return <strong key={i} className="font-bold text-white">{part.slice(2, -2)}</strong>;
+      }
+      return part;
+    });
+  };
+
+  const renderChatMessage = (content: string) => {
+    const lines = content.split("\n");
+    return lines.map((line, idx) => {
+      if (line.startsWith("### ")) {
+        return (
+          <h4 key={idx} className="font-bold text-white text-xs mt-2 mb-1">
+            {renderFormattedInline(line.replace("### ", ""))}
+          </h4>
+        );
+      }
+      if (line.startsWith("> ")) {
+        return (
+          <blockquote key={idx} className="border-l-2 border-indigo-500 pl-2.5 my-1.5 italic text-neutral-300 text-[11px] bg-indigo-500/10 py-1 px-2 rounded-r">
+            {renderFormattedInline(line.replace(/^>\s*/, ""))}
+          </blockquote>
+        );
+      }
+      if (line.startsWith("• ") || line.startsWith("- ")) {
+        return (
+          <li key={idx} className="ml-4 list-disc text-neutral-300 my-0.5 text-[11px]">
+            {renderFormattedInline(line.replace(/^[•\-]\s*/, ""))}
+          </li>
+        );
+      }
+      if (/^\d+\.\s+/.test(line)) {
+        return (
+          <li key={idx} className="ml-4 list-decimal text-neutral-300 my-0.5 text-[11px]">
+            {renderFormattedInline(line.replace(/^\d+\.\s+/, ""))}
+          </li>
+        );
+      }
+      if (!line.trim()) return <div key={idx} className="h-1.5" />;
+      return (
+        <p key={idx} className="my-1">
+          {renderFormattedInline(line)}
+        </p>
+      );
+    });
+  };
+
   return (
     <div className="max-w-7xl mx-auto h-[calc(100vh-6.5rem)] flex flex-col gap-4">
       {/* Top Header & Reader Controls */}
@@ -306,7 +398,7 @@ export default function DocumentDetailPage() {
               <h1 className="text-base md:text-lg font-bold text-white truncate max-w-md" title={doc.title}>
                 {doc.title}
               </h1>
-              <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 uppercase flex-shrink-0">
+              <span className={`px-2 py-0.5 rounded text-[11px] font-semibold uppercase flex-shrink-0 border ${getBadgeStyle(doc.fileType)}`}>
                 {doc.fileType}
               </span>
             </div>
@@ -711,7 +803,11 @@ export default function DocumentDetailPage() {
                               : "bg-neutral-900 border border-neutral-800 text-neutral-200"
                           }`}
                         >
-                          <p className="whitespace-pre-wrap">{m.content}</p>
+                          {m.role === "user" ? (
+                            <p className="whitespace-pre-wrap">{m.content}</p>
+                          ) : (
+                            <div>{renderChatMessage(m.content)}</div>
+                          )}
                         </div>
                         {m.role === "user" && (
                           <div className="w-7 h-7 rounded-full bg-neutral-800 text-neutral-300 flex items-center justify-center flex-shrink-0 mt-0.5">

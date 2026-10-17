@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getDocuments, saveDocument, Document } from '@/lib/documents-store';
+import { parseDocumentFile } from '@/lib/document-parser';
 
 export async function GET() {
   try {
@@ -56,37 +57,24 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
       }
 
-      const bytes = await file.arrayBuffer();
-      const buffer = Buffer.from(bytes);
-      const text = buffer.toString('utf8');
-
-      // Determine extension / file type
-      const filename = file.name;
-      const ext = filename.split('.').pop()?.toLowerCase() || 'txt';
-      let fileType: Document['fileType'] = 'text';
-      if (ext === 'md' || ext === 'markdown') fileType = 'markdown';
-      else if (ext === 'pdf') fileType = 'pdf';
-      else if (ext === 'csv') fileType = 'csv';
-      else if (ext === 'json') fileType = 'json';
-
-      // Title
-      const title = customTitle || filename.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
-      const words = text.trim().split(/\s+/).filter(Boolean).length;
-      const readingTime = Math.max(1, Math.ceil(words / 200));
+      const parsed = await parseDocumentFile({
+        name: file.name,
+        arrayBuffer: () => file.arrayBuffer(),
+      });
 
       const newDoc: Document = {
         id: `doc-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
-        title,
-        filename,
+        title: customTitle || parsed.title,
+        filename: file.name,
         fileSize: file.size,
-        fileType,
-        content: text,
-        summary: generateAutoSummary(text),
-        keyPoints: extractAutoKeyPoints(text),
-        wordCount: words,
-        readingTimeMinutes: readingTime,
+        fileType: parsed.fileType,
+        content: parsed.content,
+        summary: parsed.summary,
+        keyPoints: parsed.keyPoints,
+        wordCount: parsed.wordCount,
+        readingTimeMinutes: parsed.readingTimeMinutes,
         createdAt: new Date().toISOString(),
-        tags: [fileType.toUpperCase()]
+        tags: [parsed.fileType.toUpperCase()]
       };
 
       const saved = saveDocument(newDoc);

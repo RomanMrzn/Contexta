@@ -2,13 +2,16 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { apiClient } from "@/lib/api";
+import { parseDocumentFile, SupportedFileType } from "@/lib/document-parser";
+
+export type DocumentType = SupportedFileType;
 
 export interface Document {
   id: string;
   title: string;
   filename: string;
   fileSize: number;
-  fileType: "pdf" | "markdown" | "text" | "csv" | "json";
+  fileType: DocumentType;
   content: string;
   fileUrl?: string;
   summary?: string;
@@ -75,116 +78,53 @@ export function useDocuments() {
   }, [fetchDocuments]);
 
   const uploadFile = async (file: File, customTitle?: string): Promise<Document> => {
-    return new Promise((resolve, reject) => {
-      const filename = file.name;
-      const ext = filename.split(".").pop()?.toLowerCase() || "txt";
+    try {
+      const parsed = await parseDocumentFile(file);
 
-      let fileType: Document["fileType"] = "text";
-      if (ext === "md" || ext === "markdown") fileType = "markdown";
-      else if (ext === "pdf") fileType = "pdf";
-      else if (ext === "csv") fileType = "csv";
-      else if (ext === "json") fileType = "json";
+      let fileUrl: string | undefined = undefined;
+      if (parsed.fileType === "pdf") {
+        fileUrl = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve((reader.result as string) || "");
+          reader.onerror = () => resolve("");
+          reader.readAsDataURL(file);
+        });
+      }
 
-      const title =
-        customTitle ||
-        filename
-          .replace(/\.[^/.]+$/, "")
-          .replace(/[-_]/g, " ")
-          .trim();
-
-      const fileUrl = URL.createObjectURL(file);
-
-      // Read text content
-      const reader = new FileReader();
-
-      reader.onload = async (e) => {
-        try {
-          let text = (e.target?.result as string) || "";
-          if (fileType === "pdf" && !text) {
-            text = `[PDF Document: ${filename}]\nThis document was uploaded and is rendered via Contexta's embedded document viewer.\nFile size: ${(file.size / 1024).toFixed(1)} KB.`;
-          }
-
-          const words = text.trim().split(/\s+/).filter(Boolean).length;
-          const readingTime = Math.max(1, Math.ceil(words / 200));
-
-          const payload = {
-            id: `doc-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
-            title,
-            filename,
-            fileSize: file.size,
-            fileType,
-            content: text,
-            fileUrl,
-            wordCount: words,
-            readingTimeMinutes: readingTime,
-            createdAt: new Date().toISOString(),
-            tags: [fileType.toUpperCase()]
-          };
-
-          const saved = await apiClient<Document>("/api/documents", {
-            method: "POST",
-            body: JSON.stringify(payload)
-          });
-
-          setDocuments((prev) => {
-            const next = [saved, ...prev.filter((d) => d.id !== saved.id)];
-            if (typeof window !== "undefined") {
-              localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-            }
-            return next;
-          });
-
-          resolve(saved);
-        } catch (err) {
-          reject(err);
-        }
+      const payload: Document = {
+        id: `doc-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+        title: customTitle || parsed.title,
+        filename: file.name,
+        fileSize: file.size,
+        fileType: parsed.fileType,
+        content: parsed.content,
+        fileUrl: fileUrl || undefined,
+        summary: parsed.summary,
+        keyPoints: parsed.keyPoints,
+        wordCount: parsed.wordCount,
+        readingTimeMinutes: parsed.readingTimeMinutes,
+        createdAt: new Date().toISOString(),
+        tags: [parsed.fileType.toUpperCase()]
       };
 
-      reader.onerror = () => reject(new Error("Failed to read file"));
+      const saved = await apiClient<Document>("/api/documents", {
+        method: "POST",
+        body: JSON.stringify(payload)
+      });
 
-      if (fileType === "pdf") {
-        // Read as arrayBuffer or data URL
-        const dataReader = new FileReader();
-        dataReader.onload = async (ev) => {
-          try {
-            const dataUrl = ev.target?.result as string;
-            const payload = {
-              id: `doc-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
-              title,
-              filename,
-              fileSize: file.size,
-              fileType: "pdf",
-              content: `# ${title}\n\n[Interactive PDF Preview Active]\nFilename: ${filename}\nSize: ${(file.size / 1024).toFixed(1)} KB\nUploaded: ${new Date().toLocaleDateString()}\n\nUse the Native PDF Viewer tab above to read the document with full layout, fonts, and images.`,
-              fileUrl: dataUrl,
-              wordCount: Math.round(file.size / 10),
-              readingTimeMinutes: Math.max(1, Math.ceil(file.size / 2000)),
-              createdAt: new Date().toISOString(),
-              tags: ["PDF", "DOCUMENT"]
-            };
+      setDocuments((prev) => {
+        const next = [saved, ...prev.filter((d) => d.id !== saved.id)];
+        if (typeof window !== "undefined") {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+        }
+        return next;
+      });
 
-            const saved = await apiClient<Document>("/api/documents", {
-              method: "POST",
-              body: JSON.stringify(payload)
-            });
-
-            setDocuments((prev) => {
-              const next = [saved, ...prev.filter((d) => d.id !== saved.id)];
-              if (typeof window !== "undefined") {
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-              }
-              return next;
-            });
-
-            resolve(saved);
-          } catch (err) {
-            reject(err);
-          }
-        };
-        dataReader.readAsDataURL(file);
-      } else {
-        reader.readAsText(file);
-      }
-    });
+      return saved;
+    } catch (err: any) {
+      console.error("Upload error in hook:", err);
+      throw err;
+    }
   };
 
   const addDocument = async (docData: Partial<Document> & { title: string; content: string }): Promise<Document> => {
