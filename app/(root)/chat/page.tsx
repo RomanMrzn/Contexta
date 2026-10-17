@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useChat } from "@ai-sdk/react";
@@ -8,7 +8,7 @@ import { Send, Bot, User, Trash2, Folder, Layers } from "lucide-react";
 import { DeleteChatModal } from "@/components/DeleteChatModal";
 import { useSeries } from "@/hooks/useSeries";
 
-export default function GlobalChatPage() {
+function ChatContent() {
   const searchParams = useSearchParams();
   const seriesId = searchParams.get("seriesId");
 
@@ -324,5 +324,19 @@ export default function GlobalChatPage() {
         messageCount={messages.length}
       />
     </div>
+  );
+}
+
+export default function GlobalChatPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="max-w-4xl mx-auto h-[calc(100vh-8rem)] flex items-center justify-center bg-neutral-950 border border-neutral-800 rounded-2xl">
+          <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+        </div>
+      }
+    >
+      <ChatContent />
+    </Suspense>
   );
 }

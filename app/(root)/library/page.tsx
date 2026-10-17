@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useMemo, useEffect } from "react";
+import { useState, useRef, useMemo, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
@@ -41,7 +41,7 @@ const CATEGORY_TABS = [
   "Personal Archive",
 ];
 
-export default function LibraryPage() {
+function LibraryContent() {
   const searchParams = useSearchParams();
   const initialSeriesId = searchParams.get("seriesId");
 
@@ -802,5 +802,20 @@ export default function LibraryPage() {
         }}
       />
     </div>
+  );
+}
+
+export default function LibraryPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="max-w-6xl mx-auto p-16 text-center space-y-3">
+          <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-sm text-neutral-400">Loading library collections...</p>
+        </div>
+      }
+    >
+      <LibraryContent />
+    </Suspense>
   );
 }
