@@ -1,36 +1,104 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Contexta 📚✨
 
-## Getting Started
+**Contexta** is a document intelligence and knowledge management platform designed for reading, organizing, and querying complex documents, research papers, light novels, and books.
 
-First, run the development server:
+Built with **Next.js 16 (App Router & Turbopack)**, **Clerk Authentication**, and the **Vercel AI SDK**, Contexta pairs an immersive dark-mode reader with deep semantic retrieval, volume-ordered series organization, and narrative AI question-answering.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+---
+
+## 🌟 Key Features
+
+### 1. 🗂️ Library, Series & Folders
+- **Multi-Document Collections**: Group related books, light novels, lecture notes, or research papers into organized Series and Folders.
+- **Volume & Chapter Ordering**: Assign explicit volume numbers (e.g., `Vol. 1`, `Vol. 2`) or chronological order to books in a series.
+- **Aggregated Analytics**: Real-time roll-ups of total books, cumulative word count, and estimated reading time across each collection.
+- **Category Tags & Accent Themes**: Color-code series (Indigo, Violet, Emerald, Amber, Rose, Cyan, Blue) and categorize by *Light Novel / Fiction*, *Research Papers*, *Textbooks & Study*, *Technical Docs*, *Work & Business*, or *Personal Archive*.
+- **Safe Folder Deletion**: Deleting a folder unassigns the member books cleanly back to your standalone library without deleting the underlying documents.
+
+### 2. 📖 Universal Document Ingestion & Reader
+- **Multi-Format Support**:
+  - **PDFs**: Full text parsing and integrated PDF preview.
+  - **EPUB eBooks**: Multi-chapter extraction and eBook reading.
+  - **Word Documents**: `.docx` and `.doc` parsing with formatting preservation.
+  - **PowerPoint**: `.pptx` and `.ppt` slide-by-slide structure detection.
+  - **Markdown & Plain Text**: Native rendering with syntax highlighting.
+  - **Data Files**: CSV and JSON tabular previews.
+- **Interactive Reader**:
+  - Focus mode & adjustable typography (Sans, Serif, Monospace, variable font size).
+  - In-document text search with live match navigation.
+  - Real-time reading progress indicator.
+  - Auto-generated key points, executive summaries, and reading time estimates.
+
+### 3. 💬 Grounded AI Question Answering & Synthesis
+- **Series-Grounded Chat**: Ask questions strictly scoped to a specific series or folder (e.g., asking about plot developments across Volumes 1–3 of a novel).
+- **Document-Specific Chat**: Chat directly alongside any open document with instant context grounding.
+- **Global Library Chat**: Cross-document query synthesis and knowledge discovery across your entire personal library.
+- **Descriptive Narrative Answers**: Generates rich, explanatory, step-by-step answers that synthesize insights rather than simply regurgitating raw text chunks.
+- **Chat Management**: Clear full conversation history or remove individual messages with confirmation modals.
+
+### 4. 🔒 Single-Account Isolation & Security
+- **Clerk Authentication**: Seamless, secure authentication.
+- **Strict Data Scoping**: All documents, series, and chat histories are strictly isolated to the authenticated user ID (`auth.userId`).
+
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+- **Node.js** 18+ (Node.js 20+ recommended)
+- **npm**, **pnpm**, or **yarn**
+
+### Environment Configuration
+Create a `.env` file in the root directory:
+
+```env
+# Clerk Authentication
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...
+CLERK_SECRET_KEY=sk_test_...
+NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
+NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up
+NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL=/
+NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL=/
+
+# AI / LLM Integration (Optional fallback or external service)
+GEMINI_API_KEY=AIzaSy...
+# or OPENAI_API_KEY=sk-...
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Installation & Running Locally
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+# 1. Install dependencies
+npm install
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+# 2. Run the development server
+npm run dev
 
-## Learn More
+# 3. Open in your browser
+# Visit http://localhost:3000
+```
 
-To learn more about Next.js, take a look at the following resources:
+### Production Build
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+npm run build
+npm run start
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+---
 
-## Deploy on Vercel
+## 🛠️ Architecture & Tech Stack
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+| Layer | Technologies |
+| :--- | :--- |
+| **Framework** | Next.js 16.4 (App Router, Turbopack, React 19) |
+| **Authentication** | Clerk (`@clerk/nextjs`) |
+| **AI / Streaming** | Vercel AI SDK (`ai`, `@ai-sdk/react`, `@ai-sdk/google`) |
+| **Styling & UI** | Tailwind CSS, Lucide React Icons |
+| **Parsers** | `pdf-parse`, `unpdf`, `mammoth`, `epub2`, `jszip` |
+| **Data Layer** | Server-side user-isolated storage engine with local caching |
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+---
+
+## 📄 License
+MIT License. Built with ❤️ for document intelligence.
