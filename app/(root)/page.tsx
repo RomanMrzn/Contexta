@@ -1,11 +1,14 @@
 "use client";
 
-import { FileText, MessageSquare, Plus, ArrowRight, Clock, BookOpen, Sparkles, Upload } from "lucide-react";
+import { FileText, MessageSquare, Plus, ArrowRight, Clock, BookOpen, Sparkles, Upload, Trash2 } from "lucide-react";
 import Link from "next/link";
-import { useDocuments } from "@/hooks/useDocuments";
+import { useState } from "react";
+import { useDocuments, Document } from "@/hooks/useDocuments";
+import { DeleteDocumentModal } from "@/components/DeleteDocumentModal";
 
 export default function DashboardPage() {
-  const { documents, isLoading } = useDocuments();
+  const { documents, isLoading, deleteDocument } = useDocuments();
+  const [docToDelete, setDocToDelete] = useState<Document | null>(null);
 
   const recentDocs = documents.slice(0, 4);
   const totalWords = documents.reduce((acc, curr) => acc + (curr.wordCount || 0), 0);
@@ -143,19 +146,43 @@ export default function DashboardPage() {
                   <span className="text-[11px] text-neutral-500">
                     {doc.wordCount.toLocaleString()} words
                   </span>
-                  <Link
-                    href={`/documents/${doc.id}`}
-                    className="text-xs font-semibold text-indigo-400 group-hover:text-indigo-300 flex items-center gap-1 transition-colors"
-                  >
-                    Read Document
-                    <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-                  </Link>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setDocToDelete(doc);
+                      }}
+                      className="p-1 rounded-lg text-neutral-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
+                      title="Delete document"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                    <Link
+                      href={`/documents/${doc.id}`}
+                      className="text-xs font-semibold text-indigo-400 group-hover:text-indigo-300 flex items-center gap-1 transition-colors"
+                    >
+                      Read Document
+                      <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                    </Link>
+                  </div>
                 </div>
               </div>
             ))}
           </div>
         )}
       </div>
+
+      {/* Delete Document Confirmation Modal */}
+      <DeleteDocumentModal
+        isOpen={!!docToDelete}
+        onClose={() => setDocToDelete(null)}
+        onConfirm={async () => {
+          if (!docToDelete) return;
+          await deleteDocument(docToDelete.id);
+        }}
+        documentTitle={docToDelete?.title || ""}
+      />
     </div>
   );
 }

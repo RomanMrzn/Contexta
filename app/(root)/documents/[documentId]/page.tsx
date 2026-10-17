@@ -26,9 +26,11 @@ import {
   Eye,
   Sliders,
   ChevronRight,
-  ExternalLink
+  ExternalLink,
+  Trash2,
 } from "lucide-react";
 import { useDocuments, Document } from "@/hooks/useDocuments";
+import { DeleteDocumentModal } from "@/components/DeleteDocumentModal";
 import { useChat } from "@ai-sdk/react";
 
 export default function DocumentDetailPage() {
@@ -36,9 +38,12 @@ export default function DocumentDetailPage() {
   const router = useRouter();
   const documentId = params.documentId as string;
 
-  const { documents, getDocument, isLoading: isDocsLoading } = useDocuments();
+  const { documents, getDocument, deleteDocument, isLoading: isDocsLoading } = useDocuments();
   const [doc, setDoc] = useState<Document | null>(null);
   const [isLoadingDoc, setIsLoadingDoc] = useState(true);
+
+  // Delete modal state
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   // Reader Customizations
   const [fontSize, setFontSize] = useState<"sm" | "base" | "lg" | "xl">("base");
@@ -130,6 +135,16 @@ export default function DocumentDetailPage() {
     link.download = doc.filename;
     link.click();
     URL.revokeObjectURL(url);
+  };
+
+  const handleDeleteDocument = async () => {
+    if (!doc) return;
+    try {
+      await deleteDocument(doc.id);
+      router.push("/documents");
+    } catch (err) {
+      console.error("Failed to delete document:", err);
+    }
   };
 
   // Format bytes
@@ -384,6 +399,15 @@ export default function DocumentDetailPage() {
             title="Download file"
           >
             <Download className="w-4 h-4" />
+          </button>
+
+          {/* Delete Document */}
+          <button
+            onClick={() => setIsDeleteModalOpen(true)}
+            className="p-2 rounded-lg text-neutral-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
+            title="Delete Document"
+          >
+            <Trash2 className="w-4 h-4" />
           </button>
 
           {/* Focus Mode Toggle */}
@@ -743,6 +767,14 @@ export default function DocumentDetailPage() {
           </div>
         )}
       </div>
+
+      {/* Delete Document Confirmation Modal */}
+      <DeleteDocumentModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={handleDeleteDocument}
+        documentTitle={doc?.title || ""}
+      />
     </div>
   );
 }

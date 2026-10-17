@@ -22,6 +22,7 @@ import {
   ArrowRight
 } from "lucide-react";
 import { useDocuments, Document } from "@/hooks/useDocuments";
+import { DeleteDocumentModal } from "@/components/DeleteDocumentModal";
 
 export default function DocumentsPage() {
   const { documents, isLoading, error, uploadFile, deleteDocument, addDocument } = useDocuments();
@@ -36,6 +37,9 @@ export default function DocumentsPage() {
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [uploadSuccess, setUploadSuccess] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
+
+  // Delete modal state
+  const [docToDelete, setDocToDelete] = useState<Document | null>(null);
 
   // Manual note modal
   const [isTextModalOpen, setIsTextModalOpen] = useState(false);
@@ -207,6 +211,20 @@ export default function DocumentsPage() {
     link.download = doc.filename;
     link.click();
     URL.revokeObjectURL(url);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!docToDelete) return;
+    const title = docToDelete.title;
+    try {
+      await deleteDocument(docToDelete.id);
+      setUploadSuccess(`"${title}" was deleted.`);
+      setTimeout(() => setUploadSuccess(null), 3500);
+    } catch (err: any) {
+      setUploadError(err.message || "Failed to delete document");
+    } finally {
+      setDocToDelete(null);
+    }
   };
 
   // Filter & sort
@@ -554,9 +572,7 @@ export default function DocumentsPage() {
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
-                          if (confirm(`Are you sure you want to delete "${doc.title}"?`)) {
-                            deleteDocument(doc.id);
-                          }
+                          setDocToDelete(doc);
                         }}
                         title="Delete document"
                         className="p-1.5 rounded-lg text-neutral-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
@@ -674,9 +690,7 @@ export default function DocumentsPage() {
                           <Download className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() => {
-                            if (confirm(`Delete "${doc.title}"?`)) deleteDocument(doc.id);
-                          }}
+                          onClick={() => setDocToDelete(doc)}
                           title="Delete"
                           className="p-1.5 rounded-lg text-neutral-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
                         >
@@ -760,6 +774,14 @@ export default function DocumentsPage() {
           </div>
         </div>
       )}
+
+      {/* Delete Document Confirmation Modal */}
+      <DeleteDocumentModal
+        isOpen={!!docToDelete}
+        onClose={() => setDocToDelete(null)}
+        onConfirm={handleConfirmDelete}
+        documentTitle={docToDelete?.title || ""}
+      />
     </div>
   );
 }
