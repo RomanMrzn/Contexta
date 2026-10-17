@@ -1,7 +1,7 @@
 // A simple fetch wrapper to communicate with the Express backend
 // The Next.js frontend runs on localhost:3000, backend on localhost:3001
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || '';
 
 export async function apiClient<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const headers = new Headers(options.headers || {});
