@@ -46,7 +46,7 @@ export default function DocumentDetailPage() {
   // Delete modal state
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isDeleteChatModalOpen, setIsDeleteChatModalOpen] = useState(false);
-  const isChatHydrated = useRef(false);
+  const hydratedDocId = useRef<string | null>(null);
 
   // Reader Customizations
   const [fontSize, setFontSize] = useState<"sm" | "base" | "lg" | "xl">("base");
@@ -82,27 +82,31 @@ export default function DocumentDetailPage() {
     },
   });
 
-  // Hydrate chat messages from localStorage on client mount
+  const setMessagesRef = useRef(setMessages);
+  setMessagesRef.current = setMessages;
+
+  // Hydrate chat messages from localStorage on client mount (runs once per documentId)
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    if (typeof window === "undefined" || !documentId) return;
+    if (hydratedDocId.current === documentId) return;
+    hydratedDocId.current = documentId;
+
     try {
       const saved = localStorage.getItem(`contexta_chat_${documentId}`);
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          setMessages(parsed);
+          setMessagesRef.current(parsed);
         }
       }
     } catch (err) {
       console.error("Failed to load chat history:", err);
-    } finally {
-      isChatHydrated.current = true;
     }
-  }, [documentId, setMessages]);
+  }, [documentId]);
 
   // Persist chat messages to localStorage when updated
   useEffect(() => {
-    if (!isChatHydrated.current || typeof window === "undefined") return;
+    if (hydratedDocId.current !== documentId || typeof window === "undefined") return;
     try {
       if (messages.length > 0) {
         localStorage.setItem(`contexta_chat_${documentId}`, JSON.stringify(messages));
@@ -132,23 +136,32 @@ export default function DocumentDetailPage() {
     if (existing) {
       setDoc(existing);
       setIsLoadingDoc(false);
-    } else {
-      // Fetch directly from API
-      fetch(`/api/documents/${documentId}`)
-        .then((res) => {
-          if (!res.ok) throw new Error("Document not found");
-          return res.json();
-        })
-        .then((data) => {
+      return;
+    }
+
+    let isCancelled = false;
+    fetch(`/api/documents/${documentId}`)
+      .then((res) => {
+        if (!res.ok) throw new Error("Document not found");
+        return res.json();
+      })
+      .then((data) => {
+        if (!isCancelled) {
           setDoc(data);
           setIsLoadingDoc(false);
-        })
-        .catch((err) => {
+        }
+      })
+      .catch((err) => {
+        if (!isCancelled) {
           console.error(err);
           setIsLoadingDoc(false);
-        });
-    }
-  }, [documentId, getDocument, documents]);
+        }
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [documentId, getDocument]);
 
   // If document is PDF, default to PDF tab if url exists
   useEffect(() => {

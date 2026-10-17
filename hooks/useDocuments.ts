@@ -159,9 +159,12 @@ export function useDocuments() {
     });
   };
 
-  const getDocument = (id: string): Document | undefined => {
-    return documents.find((d) => d.id === id);
-  };
+  const getDocument = useCallback(
+    (id: string): Document | undefined => {
+      return documents.find((d) => d.id === id);
+    },
+    [documents]
+  );
 
   return {
     documents,

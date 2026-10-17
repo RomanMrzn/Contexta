@@ -7,7 +7,7 @@ import { DeleteChatModal } from "@/components/DeleteChatModal";
 
 export default function GlobalChatPage() {
   const [isDeleteChatModalOpen, setIsDeleteChatModalOpen] = useState(false);
-  const isChatHydrated = useRef(false);
+  const hasHydrated = useRef(false);
 
   const {
     messages,
@@ -21,27 +21,30 @@ export default function GlobalChatPage() {
     api: "/api/chat",
   });
 
-  // Hydrate global chat from localStorage on client mount
+  const setMessagesRef = useRef(setMessages);
+  setMessagesRef.current = setMessages;
+
+  // Hydrate global chat from localStorage on client mount (runs once)
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    if (hasHydrated.current || typeof window === "undefined") return;
+    hasHydrated.current = true;
+
     try {
       const saved = localStorage.getItem("contexta_global_chat");
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          setMessages(parsed);
+          setMessagesRef.current(parsed);
         }
       }
     } catch (err) {
       console.error("Failed to load global chat history:", err);
-    } finally {
-      isChatHydrated.current = true;
     }
-  }, [setMessages]);
+  }, []);
 
   // Persist global chat to localStorage
   useEffect(() => {
-    if (!isChatHydrated.current || typeof window === "undefined") return;
+    if (!hasHydrated.current || typeof window === "undefined") return;
     try {
       if (messages.length > 0) {
         localStorage.setItem("contexta_global_chat", JSON.stringify(messages));
