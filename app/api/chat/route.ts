@@ -6,7 +6,13 @@ import { streamDescriptiveAnswer } from '@/lib/llm-service';
 export async function POST(req: Request) {
   try {
     const { userId } = await auth();
-    const currentUserId = userId || 'demo-user';
+    if (!userId) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    const currentUserId = userId;
 
     const body = await req.json();
     const { messages, documentId, docTitle: clientTitle, docContent: clientContent } = body;
@@ -39,18 +45,19 @@ export async function POST(req: Request) {
       }
     }
 
-    // Retrieve target document or collection
+    // Retrieve target document or collection scoped strictly to this user
     let targetDoc: Document | null = null;
     let allDocs: Document[] = [];
 
     if (documentId) {
-      targetDoc = getDocumentById(documentId);
+      targetDoc = getDocumentById(documentId, currentUserId);
     }
 
     // Fallback if client passed content directly
     if (!targetDoc && clientContent) {
       targetDoc = {
         id: documentId || 'current-doc',
+        userId: currentUserId,
         title: clientTitle || 'Uploaded Document',
         filename: `${(clientTitle || 'document').toLowerCase().replace(/\s+/g, '_')}.txt`,
         fileSize: Buffer.byteLength(clientContent, 'utf8'),
@@ -63,7 +70,7 @@ export async function POST(req: Request) {
     }
 
     if (!targetDoc) {
-      allDocs = getDocuments();
+      allDocs = getDocuments(currentUserId);
     }
 
     // Stream descriptive, narrative answer with optional LLM integration

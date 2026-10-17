@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { auth } from '@clerk/nextjs/server';
 import { getDocumentById, deleteDocumentById, updateDocumentById } from '@/lib/documents-store';
 
 export async function GET(
@@ -6,10 +7,15 @@ export async function GET(
   { params }: { params: Promise<{ documentId: string }> }
 ) {
   try {
+    const { userId } = await auth();
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { documentId } = await params;
-    const doc = getDocumentById(documentId);
+    const doc = getDocumentById(documentId, userId);
     if (!doc) {
-      return NextResponse.json({ error: 'Document not found' }, { status: 404 });
+      return NextResponse.json({ error: 'Document not found or access denied' }, { status: 404 });
     }
     return NextResponse.json(doc);
   } catch (error) {
@@ -23,10 +29,15 @@ export async function DELETE(
   { params }: { params: Promise<{ documentId: string }> }
 ) {
   try {
+    const { userId } = await auth();
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { documentId } = await params;
-    const deleted = deleteDocumentById(documentId);
+    const deleted = deleteDocumentById(documentId, userId);
     if (!deleted) {
-      return NextResponse.json({ error: 'Document not found' }, { status: 404 });
+      return NextResponse.json({ error: 'Document not found or access denied' }, { status: 404 });
     }
     return NextResponse.json({ success: true, message: 'Document deleted' });
   } catch (error) {
@@ -40,11 +51,16 @@ export async function PATCH(
   { params }: { params: Promise<{ documentId: string }> }
 ) {
   try {
+    const { userId } = await auth();
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { documentId } = await params;
     const body = await req.json();
-    const updated = updateDocumentById(documentId, body);
+    const updated = updateDocumentById(documentId, body, userId);
     if (!updated) {
-      return NextResponse.json({ error: 'Document not found' }, { status: 404 });
+      return NextResponse.json({ error: 'Document not found or access denied' }, { status: 404 });
     }
     return NextResponse.json(updated);
   } catch (error) {

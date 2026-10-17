@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { useAuth } from "@clerk/nextjs";
 import { apiClient } from "@/lib/api";
 import { parseDocumentFile, SupportedFileType } from "@/lib/document-parser";
 
@@ -8,6 +9,7 @@ export type DocumentType = SupportedFileType;
 
 export interface Document {
   id: string;
+  userId?: string;
   title: string;
   filename: string;
   fileSize: number;
@@ -22,21 +24,32 @@ export interface Document {
   tags?: string[];
 }
 
-const STORAGE_KEY = "contexta_documents_cache";
-
 export function useDocuments() {
+  const { userId, isLoaded: isAuthLoaded } = useAuth();
   const [documents, setDocuments] = useState<Document[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const storageKey = useMemo(() => {
+    return userId ? `contexta_documents_cache_${userId}` : "contexta_documents_cache";
+  }, [userId]);
+
   const fetchDocuments = useCallback(async () => {
+    if (!isAuthLoaded) return;
+
+    if (!userId) {
+      setDocuments([]);
+      setIsLoading(false);
+      return;
+    }
+
     try {
       setIsLoading(true);
       setError(null);
 
-      // Check localStorage first for instant display
+      // Check user-scoped localStorage first for instant display
       if (typeof window !== "undefined") {
-        const cached = localStorage.getItem(STORAGE_KEY);
+        const cached = localStorage.getItem(storageKey);
         if (cached) {
           try {
             setDocuments(JSON.parse(cached));
@@ -46,18 +59,18 @@ export function useDocuments() {
         }
       }
 
-      // Fetch latest from API
+      // Fetch latest from API scoped to this user
       const data = await apiClient<Document[]>("/api/documents");
       if (Array.isArray(data)) {
         setDocuments(data);
         if (typeof window !== "undefined") {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+          localStorage.setItem(storageKey, JSON.stringify(data));
         }
       }
     } catch (err: any) {
       console.warn("Falling back to local cache:", err);
       if (typeof window !== "undefined") {
-        const cached = localStorage.getItem(STORAGE_KEY);
+        const cached = localStorage.getItem(storageKey);
         if (cached) {
           try {
             setDocuments(JSON.parse(cached));
@@ -71,7 +84,7 @@ export function useDocuments() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [userId, isAuthLoaded, storageKey]);
 
   useEffect(() => {
     fetchDocuments();
@@ -93,6 +106,7 @@ export function useDocuments() {
 
       const payload: Document = {
         id: `doc-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+        userId: userId || undefined,
         title: customTitle || parsed.title,
         filename: file.name,
         fileSize: file.size,
@@ -115,7 +129,7 @@ export function useDocuments() {
       setDocuments((prev) => {
         const next = [saved, ...prev.filter((d) => d.id !== saved.id)];
         if (typeof window !== "undefined") {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+          localStorage.setItem(storageKey, JSON.stringify(next));
         }
         return next;
       });
@@ -130,13 +144,13 @@ export function useDocuments() {
   const addDocument = async (docData: Partial<Document> & { title: string; content: string }): Promise<Document> => {
     const saved = await apiClient<Document>("/api/documents", {
       method: "POST",
-      body: JSON.stringify(docData)
+      body: JSON.stringify({ ...docData, userId })
     });
 
     setDocuments((prev) => {
       const next = [saved, ...prev.filter((d) => d.id !== saved.id)];
       if (typeof window !== "undefined") {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+        localStorage.setItem(storageKey, JSON.stringify(next));
       }
       return next;
     });
@@ -153,7 +167,7 @@ export function useDocuments() {
     setDocuments((prev) => {
       const next = prev.filter((d) => d.id !== id);
       if (typeof window !== "undefined") {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+        localStorage.setItem(storageKey, JSON.stringify(next));
       }
       return next;
     });

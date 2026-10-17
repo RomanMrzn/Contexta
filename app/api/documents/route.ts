@@ -1,10 +1,16 @@
 import { NextResponse } from 'next/server';
+import { auth } from '@clerk/nextjs/server';
 import { getDocuments, saveDocument, Document } from '@/lib/documents-store';
 import { parseDocumentFile } from '@/lib/document-parser';
 
 export async function GET() {
   try {
-    const docs = getDocuments();
+    const { userId } = await auth();
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const docs = getDocuments(userId);
     return NextResponse.json(docs);
   } catch (error) {
     console.error('Error fetching documents:', error);
@@ -14,6 +20,11 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
+    const { userId } = await auth();
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const contentType = req.headers.get('content-type') || '';
 
     // If client sends JSON payload
@@ -29,6 +40,7 @@ export async function POST(req: Request) {
 
       const newDoc: Document = {
         id,
+        userId,
         title: body.title,
         filename: body.filename || `${body.title.toLowerCase().replace(/\s+/g, '_')}.txt`,
         fileSize: body.fileSize || Buffer.byteLength(body.content, 'utf8'),
@@ -64,6 +76,7 @@ export async function POST(req: Request) {
 
       const newDoc: Document = {
         id: `doc-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+        userId,
         title: customTitle || parsed.title,
         filename: file.name,
         fileSize: file.size,

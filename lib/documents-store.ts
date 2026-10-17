@@ -15,6 +15,7 @@ export type DocumentType =
 
 export interface Document {
   id: string;
+  userId: string;
   title: string;
   filename: string;
   fileSize: number;
@@ -35,6 +36,7 @@ const DATA_FILE = path.join(DATA_DIR, 'documents.json');
 const INITIAL_DOCUMENTS: Document[] = [
   {
     id: 'doc-rag-architecture',
+    userId: 'system',
     title: 'Contexta RAG Architecture & Vector Pipeline',
     filename: 'contexta_rag_architecture.md',
     fileSize: 4280,
@@ -78,6 +80,7 @@ During conversational queries, retrieved chunks are reranked and packed into the
   },
   {
     id: 'doc-ai-whitepaper',
+    userId: 'system',
     title: 'Modern Generative AI Foundations & Scalability',
     filename: 'generative_ai_scalability.txt',
     fileSize: 3840,
@@ -124,51 +127,110 @@ function ensureDataFile() {
   }
 }
 
-export function getDocuments(): Document[] {
+export function getDocuments(userId?: string): Document[] {
   try {
     ensureDataFile();
     const data = fs.readFileSync(DATA_FILE, 'utf8');
-    return JSON.parse(data);
+    const docs: Document[] = JSON.parse(data);
+
+    if (!userId) {
+      return docs;
+    }
+
+    // Auto-claim legacy unassigned documents for the active user so existing uploads are preserved
+    let updated = false;
+    docs.forEach((doc) => {
+      if (!doc.userId) {
+        doc.userId = userId;
+        updated = true;
+      }
+    });
+
+    if (updated) {
+      fs.writeFileSync(DATA_FILE, JSON.stringify(docs, null, 2), 'utf8');
+    }
+
+    // Return strictly documents belonging to this user
+    return docs.filter((d) => d.userId === userId);
   } catch (error) {
     console.error('Failed to read documents store:', error);
-    return INITIAL_DOCUMENTS;
+    return [];
   }
 }
 
-export function getDocumentById(id: string): Document | null {
-  const docs = getDocuments();
-  return docs.find((d) => d.id === id) || null;
+export function getDocumentById(id: string, userId?: string): Document | null {
+  ensureDataFile();
+  const data = fs.readFileSync(DATA_FILE, 'utf8');
+  const docs: Document[] = JSON.parse(data);
+  const found = docs.find((d) => d.id === id);
+  if (!found) return null;
+
+  // If document had no userId yet, associate it with this requesting user
+  if (!found.userId && userId) {
+    found.userId = userId;
+    saveDocument(found);
+    return found;
+  }
+
+  // If a userId is specified, strictly enforce single-account ownership
+  if (userId && found.userId !== userId) {
+    return null;
+  }
+
+  return found;
 }
 
 export function saveDocument(document: Document): Document {
   ensureDataFile();
-  const docs = getDocuments();
+  const data = fs.readFileSync(DATA_FILE, 'utf8');
+  const docs: Document[] = JSON.parse(data);
   const existingIndex = docs.findIndex((d) => d.id === document.id);
+
   if (existingIndex >= 0) {
-    docs[existingIndex] = document;
+    // Retain original owner unless explicitly provided
+    docs[existingIndex] = {
+      ...document,
+      userId: document.userId || docs[existingIndex].userId,
+    };
   } else {
     docs.unshift(document);
   }
+
   fs.writeFileSync(DATA_FILE, JSON.stringify(docs, null, 2), 'utf8');
   return document;
 }
 
-export function deleteDocumentById(id: string): boolean {
+export function deleteDocumentById(id: string, userId?: string): boolean {
   ensureDataFile();
-  const docs = getDocuments();
-  const filtered = docs.filter((d) => d.id !== id);
-  if (filtered.length !== docs.length) {
-    fs.writeFileSync(DATA_FILE, JSON.stringify(filtered, null, 2), 'utf8');
-    return true;
+  const data = fs.readFileSync(DATA_FILE, 'utf8');
+  const docs: Document[] = JSON.parse(data);
+  const docToDelete = docs.find((d) => d.id === id);
+
+  if (!docToDelete) return false;
+
+  // Prevent another account from deleting someone else's document
+  if (userId && docToDelete.userId && docToDelete.userId !== userId) {
+    return false;
   }
-  return false;
+
+  const filtered = docs.filter((d) => d.id !== id);
+  fs.writeFileSync(DATA_FILE, JSON.stringify(filtered, null, 2), 'utf8');
+  return true;
 }
 
-export function updateDocumentById(id: string, updates: Partial<Document>): Document | null {
+export function updateDocumentById(id: string, updates: Partial<Document>, userId?: string): Document | null {
   ensureDataFile();
-  const docs = getDocuments();
+  const data = fs.readFileSync(DATA_FILE, 'utf8');
+  const docs: Document[] = JSON.parse(data);
   const index = docs.findIndex((d) => d.id === id);
+
   if (index === -1) return null;
+
+  // Prevent another account from updating someone else's document
+  if (userId && docs[index].userId && docs[index].userId !== userId) {
+    return null;
+  }
+
   docs[index] = { ...docs[index], ...updates };
   fs.writeFileSync(DATA_FILE, JSON.stringify(docs, null, 2), 'utf8');
   return docs[index];
