@@ -1,12 +1,68 @@
 "use client";
 
+import { useState, useEffect, useRef } from "react";
 import { useChat } from "@ai-sdk/react";
-import { Send, Bot, User } from "lucide-react";
+import { Send, Bot, User, Trash2 } from "lucide-react";
+import { DeleteChatModal } from "@/components/DeleteChatModal";
 
 export default function GlobalChatPage() {
-  const { messages, input, handleInputChange, handleSubmit, isLoading, setInput } = useChat({
+  const [isDeleteChatModalOpen, setIsDeleteChatModalOpen] = useState(false);
+  const isChatHydrated = useRef(false);
+
+  const {
+    messages,
+    input,
+    handleInputChange,
+    handleSubmit,
+    isLoading,
+    setInput,
+    setMessages,
+  } = useChat({
     api: "/api/chat",
   });
+
+  // Hydrate global chat from localStorage on client mount
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const saved = localStorage.getItem("contexta_global_chat");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setMessages(parsed);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to load global chat history:", err);
+    } finally {
+      isChatHydrated.current = true;
+    }
+  }, [setMessages]);
+
+  // Persist global chat to localStorage
+  useEffect(() => {
+    if (!isChatHydrated.current || typeof window === "undefined") return;
+    try {
+      if (messages.length > 0) {
+        localStorage.setItem("contexta_global_chat", JSON.stringify(messages));
+      } else {
+        localStorage.removeItem("contexta_global_chat");
+      }
+    } catch (err) {
+      console.error("Failed to save global chat history:", err);
+    }
+  }, [messages]);
+
+  const handleClearChat = () => {
+    setMessages([]);
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("contexta_global_chat");
+    }
+  };
+
+  const handleDeleteSingleMessage = (messageId: string) => {
+    setMessages((prev) => prev.filter((m) => m.id !== messageId));
+  };
 
   const renderFormattedInline = (text: string) => {
     const parts = text.split(/(\*\*.*?\*\*)/g);
@@ -60,9 +116,25 @@ export default function GlobalChatPage() {
 
   return (
     <div className="max-w-4xl mx-auto h-[calc(100vh-8rem)] flex flex-col bg-neutral-950 border border-neutral-800 rounded-2xl overflow-hidden shadow-xl">
-      <div className="p-6 border-b border-neutral-800 bg-neutral-900/50">
-        <h1 className="text-xl font-bold text-white">Library Chat</h1>
-        <p className="text-sm text-neutral-400">Ask questions across all documents in your library.</p>
+      <div className="p-6 border-b border-neutral-800 bg-neutral-900/50 flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-bold text-white">Library Chat</h1>
+          <p className="text-sm text-neutral-400">Ask questions across all documents in your library.</p>
+        </div>
+
+        {messages.length > 0 && (
+          <button
+            onClick={() => setIsDeleteChatModalOpen(true)}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 border border-rose-500/20 transition-all shadow-sm"
+            title="Delete chat conversation"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            <span>Clear Chat</span>
+            <span className="px-1.5 py-0.5 rounded-full bg-rose-500/20 text-rose-300 text-[10px]">
+              {messages.length}
+            </span>
+          </button>
+        )}
       </div>
 
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
@@ -98,19 +170,54 @@ export default function GlobalChatPage() {
           </div>
         ) : (
           messages.map((m) => (
-            <div key={m.id} className={`flex gap-4 ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+            <div
+              key={m.id}
+              className={`group flex items-start gap-3 ${
+                m.role === "user" ? "justify-end" : "justify-start"
+              }`}
+            >
               {m.role !== "user" && (
                 <div className="w-8 h-8 rounded-full bg-indigo-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
                   <Bot className="w-4 h-4 text-indigo-400" />
                 </div>
               )}
-              <div className={`max-w-[80%] rounded-2xl px-5 py-3 text-xs leading-relaxed ${m.role === "user" ? "bg-indigo-600 text-white" : "bg-neutral-900 border border-neutral-800 text-neutral-200"}`}>
+
+              {/* Delete button (user side) */}
+              {m.role === "user" && (
+                <button
+                  onClick={() => handleDeleteSingleMessage(m.id)}
+                  className="opacity-0 group-hover:opacity-100 text-neutral-500 hover:text-rose-400 p-1.5 rounded-lg hover:bg-neutral-900 transition-all self-center"
+                  title="Delete message"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              )}
+
+              <div
+                className={`max-w-[80%] rounded-2xl px-5 py-3 text-xs leading-relaxed ${
+                  m.role === "user"
+                    ? "bg-indigo-600 text-white"
+                    : "bg-neutral-900 border border-neutral-800 text-neutral-200"
+                }`}
+              >
                 {m.role === "user" ? (
                   <p className="whitespace-pre-wrap">{m.content}</p>
                 ) : (
                   <div>{renderChatMessage(m.content)}</div>
                 )}
               </div>
+
+              {/* Delete button (bot side) */}
+              {m.role !== "user" && (
+                <button
+                  onClick={() => handleDeleteSingleMessage(m.id)}
+                  className="opacity-0 group-hover:opacity-100 text-neutral-500 hover:text-rose-400 p-1.5 rounded-lg hover:bg-neutral-900 transition-all self-center"
+                  title="Delete response"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              )}
+
               {m.role === "user" && (
                 <div className="w-8 h-8 rounded-full bg-neutral-800 flex items-center justify-center flex-shrink-0 mt-0.5">
                   <User className="w-4 h-4 text-neutral-300" />
@@ -119,6 +226,7 @@ export default function GlobalChatPage() {
             </div>
           ))
         )}
+
         {isLoading && (
           <div className="flex gap-4 justify-start">
             <div className="w-8 h-8 rounded-full bg-indigo-500/20 flex items-center justify-center flex-shrink-0">
@@ -154,6 +262,15 @@ export default function GlobalChatPage() {
           </button>
         </form>
       </div>
+
+      {/* Delete Chat Confirmation Modal */}
+      <DeleteChatModal
+        isOpen={isDeleteChatModalOpen}
+        onClose={() => setIsDeleteChatModalOpen(false)}
+        onConfirm={handleClearChat}
+        conversationName="Library Chat"
+        messageCount={messages.length}
+      />
     </div>
   );
 }

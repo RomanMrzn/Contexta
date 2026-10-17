@@ -31,6 +31,7 @@ import {
 } from "lucide-react";
 import { useDocuments, Document } from "@/hooks/useDocuments";
 import { DeleteDocumentModal } from "@/components/DeleteDocumentModal";
+import { DeleteChatModal } from "@/components/DeleteChatModal";
 import { useChat } from "@ai-sdk/react";
 
 export default function DocumentDetailPage() {
@@ -44,6 +45,8 @@ export default function DocumentDetailPage() {
 
   // Delete modal state
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isDeleteChatModalOpen, setIsDeleteChatModalOpen] = useState(false);
+  const isChatHydrated = useRef(false);
 
   // Reader Customizations
   const [fontSize, setFontSize] = useState<"sm" | "base" | "lg" | "xl">("base");
@@ -62,7 +65,15 @@ export default function DocumentDetailPage() {
   const contentScrollRef = useRef<HTMLDivElement>(null);
 
   // Chat with Document using @ai-sdk/react
-  const { messages, input, handleInputChange, handleSubmit, isLoading: isChatLoading, setInput } = useChat({
+  const {
+    messages,
+    input,
+    handleInputChange,
+    handleSubmit,
+    isLoading: isChatLoading,
+    setInput,
+    setMessages,
+  } = useChat({
     api: "/api/chat",
     body: {
       documentId,
@@ -70,6 +81,50 @@ export default function DocumentDetailPage() {
       docContent: doc?.content ? doc.content.slice(0, 80000) : undefined,
     },
   });
+
+  // Hydrate chat messages from localStorage on client mount
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const saved = localStorage.getItem(`contexta_chat_${documentId}`);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setMessages(parsed);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to load chat history:", err);
+    } finally {
+      isChatHydrated.current = true;
+    }
+  }, [documentId, setMessages]);
+
+  // Persist chat messages to localStorage when updated
+  useEffect(() => {
+    if (!isChatHydrated.current || typeof window === "undefined") return;
+    try {
+      if (messages.length > 0) {
+        localStorage.setItem(`contexta_chat_${documentId}`, JSON.stringify(messages));
+      } else {
+        localStorage.removeItem(`contexta_chat_${documentId}`);
+      }
+    } catch (err) {
+      console.error("Failed to persist chat history:", err);
+    }
+  }, [messages, documentId]);
+
+  // Chat conversation actions
+  const handleClearChat = () => {
+    setMessages([]);
+    if (typeof window !== "undefined") {
+      localStorage.removeItem(`contexta_chat_${documentId}`);
+    }
+  };
+
+  const handleDeleteSingleMessage = (messageId: string) => {
+    setMessages((prev) => prev.filter((m) => m.id !== messageId));
+  };
 
   // Load document from cache or API
   useEffect(() => {
@@ -145,6 +200,9 @@ export default function DocumentDetailPage() {
     if (!doc) return;
     try {
       await deleteDocument(doc.id);
+      if (typeof window !== "undefined") {
+        localStorage.removeItem(`contexta_chat_${doc.id}`);
+      }
       router.push("/documents");
     } catch (err) {
       console.error("Failed to delete document:", err);
@@ -690,10 +748,24 @@ export default function DocumentDetailPage() {
                   <Bot className="w-3.5 h-3.5 text-indigo-400" />
                   Chat with Doc
                   {messages.length > 0 && (
-                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+                    <span className="px-1.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 text-[10px] font-bold">
+                      {messages.length}
+                    </span>
                   )}
                 </button>
               </div>
+
+              {/* Clear Chat button when chat tab is active and there are messages */}
+              {activeSideTab === "chat" && messages.length > 0 && (
+                <button
+                  onClick={() => setIsDeleteChatModalOpen(true)}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 border border-rose-500/20 transition-all"
+                  title="Delete chat conversation"
+                >
+                  <Trash2 className="w-3 h-3" />
+                  <span>Clear Chat</span>
+                </button>
+              )}
             </div>
 
             {/* Side Tab Content */}
@@ -787,7 +859,7 @@ export default function DocumentDetailPage() {
                     messages.map((m) => (
                       <div
                         key={m.id}
-                        className={`flex gap-3 ${
+                        className={`group flex items-start gap-2 ${
                           m.role === "user" ? "justify-end" : "justify-start"
                         }`}
                       >
@@ -796,6 +868,18 @@ export default function DocumentDetailPage() {
                             <Bot className="w-4 h-4" />
                           </div>
                         )}
+
+                        {/* Delete single message (user side) */}
+                        {m.role === "user" && (
+                          <button
+                            onClick={() => handleDeleteSingleMessage(m.id)}
+                            className="opacity-0 group-hover:opacity-100 text-neutral-500 hover:text-rose-400 p-1 rounded-lg hover:bg-neutral-900 transition-all self-center"
+                            title="Delete message"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+
                         <div
                           className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-xs leading-relaxed ${
                             m.role === "user"
@@ -809,6 +893,18 @@ export default function DocumentDetailPage() {
                             <div>{renderChatMessage(m.content)}</div>
                           )}
                         </div>
+
+                        {/* Delete single response (bot side) */}
+                        {m.role !== "user" && (
+                          <button
+                            onClick={() => handleDeleteSingleMessage(m.id)}
+                            className="opacity-0 group-hover:opacity-100 text-neutral-500 hover:text-rose-400 p-1 rounded-lg hover:bg-neutral-900 transition-all self-center"
+                            title="Delete response"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+
                         {m.role === "user" && (
                           <div className="w-7 h-7 rounded-full bg-neutral-800 text-neutral-300 flex items-center justify-center flex-shrink-0 mt-0.5">
                             <User className="w-4 h-4" />
@@ -870,6 +966,15 @@ export default function DocumentDetailPage() {
         onClose={() => setIsDeleteModalOpen(false)}
         onConfirm={handleDeleteDocument}
         documentTitle={doc?.title || ""}
+      />
+
+      {/* Delete Chat Conversation Confirmation Modal */}
+      <DeleteChatModal
+        isOpen={isDeleteChatModalOpen}
+        onClose={() => setIsDeleteChatModalOpen(false)}
+        onConfirm={handleClearChat}
+        conversationName={doc?.title || "Document Chat"}
+        messageCount={messages.length}
       />
     </div>
   );

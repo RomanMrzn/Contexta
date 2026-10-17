@@ -1,0 +1,101 @@
+"use client";
+
+import { useState } from "react";
+import { Trash2, AlertTriangle, X, MessageSquare } from "lucide-react";
+
+interface DeleteChatModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: () => Promise<void> | void;
+  conversationName?: string;
+  messageCount?: number;
+}
+
+export function DeleteChatModal({
+  isOpen,
+  onClose,
+  onConfirm,
+  conversationName = "this conversation",
+  messageCount,
+}: DeleteChatModalProps) {
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  if (!isOpen) return null;
+
+  const handleConfirm = async () => {
+    try {
+      setIsDeleting(true);
+      await onConfirm();
+    } finally {
+      setIsDeleting(false);
+      onClose();
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+      <div
+        className="bg-neutral-950 border border-neutral-800 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl p-6 space-y-5 animate-in zoom-in-95 duration-200"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-start justify-between">
+          <div className="w-12 h-12 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center justify-center flex-shrink-0">
+            <Trash2 className="w-6 h-6" />
+          </div>
+          <button
+            onClick={onClose}
+            disabled={isDeleting}
+            className="text-neutral-500 hover:text-white p-1 rounded-lg transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="space-y-2">
+          <h3 className="text-lg font-bold text-white">Delete Chat Conversation</h3>
+          <p className="text-sm text-neutral-400 leading-relaxed">
+            Are you sure you want to permanently delete the chat history for{" "}
+            <span className="font-semibold text-neutral-200 break-all">"{conversationName}"</span>
+            {messageCount !== undefined && messageCount > 0 ? (
+              <span className="text-neutral-400"> ({messageCount} {messageCount === 1 ? "message" : "messages"})</span>
+            ) : null}
+            ?
+          </p>
+          <div className="flex items-center gap-2 p-3 rounded-xl bg-rose-500/5 border border-rose-500/20 text-xs text-rose-300">
+            <AlertTriangle className="w-4 h-4 text-rose-400 flex-shrink-0" />
+            <span>This will delete all messages and AI responses in this chat thread. This action cannot be undone.</span>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-end gap-3 pt-2">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={isDeleting}
+            className="px-4 py-2 rounded-xl text-sm font-medium text-neutral-400 hover:text-white hover:bg-neutral-900 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleConfirm}
+            disabled={isDeleting}
+            className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white text-sm font-semibold flex items-center gap-2 shadow-lg shadow-rose-600/20 transition-all disabled:opacity-50"
+          >
+            {isDeleting ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                Deleting...
+              </>
+            ) : (
+              <>
+                <Trash2 className="w-4 h-4" />
+                Delete Chat
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
