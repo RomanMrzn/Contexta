@@ -1,13 +1,29 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
+import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { useChat } from "@ai-sdk/react";
-import { Send, Bot, User, Trash2 } from "lucide-react";
+import { Send, Bot, User, Trash2, Folder, Layers } from "lucide-react";
 import { DeleteChatModal } from "@/components/DeleteChatModal";
+import { useSeries } from "@/hooks/useSeries";
 
 export default function GlobalChatPage() {
+  const searchParams = useSearchParams();
+  const seriesId = searchParams.get("seriesId");
+
+  const { series } = useSeries();
+  const activeSeries = useMemo(() => {
+    if (!seriesId) return null;
+    return series.find((s) => s.id === seriesId) || null;
+  }, [series, seriesId]);
+
   const [isDeleteChatModalOpen, setIsDeleteChatModalOpen] = useState(false);
-  const hasHydrated = useRef(false);
+  const hydratedKeyRef = useRef<string | null>(null);
+
+  const storageKey = useMemo(() => {
+    return seriesId ? `contexta_chat_series_${seriesId}` : "contexta_global_chat";
+  }, [seriesId]);
 
   const {
     messages,
@@ -19,47 +35,54 @@ export default function GlobalChatPage() {
     setMessages,
   } = useChat({
     api: "/api/chat",
+    body: {
+      seriesId: seriesId || undefined,
+    },
   });
 
   const setMessagesRef = useRef(setMessages);
   setMessagesRef.current = setMessages;
 
-  // Hydrate global chat from localStorage on client mount (runs once)
+  // Hydrate chat from localStorage on client mount or when seriesId changes
   useEffect(() => {
-    if (hasHydrated.current || typeof window === "undefined") return;
-    hasHydrated.current = true;
+    if (typeof window === "undefined") return;
+    if (hydratedKeyRef.current === storageKey) return;
+    hydratedKeyRef.current = storageKey;
 
     try {
-      const saved = localStorage.getItem("contexta_global_chat");
+      const saved = localStorage.getItem(storageKey);
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
           setMessagesRef.current(parsed);
+          return;
         }
       }
+      // If no saved history for this key, reset messages
+      setMessagesRef.current([]);
     } catch (err) {
-      console.error("Failed to load global chat history:", err);
+      console.error("Failed to load chat history:", err);
     }
-  }, []);
+  }, [storageKey]);
 
-  // Persist global chat to localStorage
+  // Persist chat to localStorage
   useEffect(() => {
-    if (!hasHydrated.current || typeof window === "undefined") return;
+    if (hydratedKeyRef.current !== storageKey || typeof window === "undefined") return;
     try {
       if (messages.length > 0) {
-        localStorage.setItem("contexta_global_chat", JSON.stringify(messages));
+        localStorage.setItem(storageKey, JSON.stringify(messages));
       } else {
-        localStorage.removeItem("contexta_global_chat");
+        localStorage.removeItem(storageKey);
       }
     } catch (err) {
-      console.error("Failed to save global chat history:", err);
+      console.error("Failed to save chat history:", err);
     }
-  }, [messages]);
+  }, [messages, storageKey]);
 
   const handleClearChat = () => {
     setMessages([]);
     if (typeof window !== "undefined") {
-      localStorage.removeItem("contexta_global_chat");
+      localStorage.removeItem(storageKey);
     }
   };
 
@@ -121,8 +144,34 @@ export default function GlobalChatPage() {
     <div className="max-w-4xl mx-auto h-[calc(100vh-8rem)] flex flex-col bg-neutral-950 border border-neutral-800 rounded-2xl overflow-hidden shadow-xl">
       <div className="p-6 border-b border-neutral-800 bg-neutral-900/50 flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-white">Library Chat</h1>
-          <p className="text-sm text-neutral-400">Ask questions across all documents in your library.</p>
+          {activeSeries ? (
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <Link
+                  href="/chat"
+                  className="text-xs text-indigo-400 hover:text-indigo-300 font-medium transition-colors"
+                >
+                  ← Global Chat
+                </Link>
+                <span className="text-neutral-600">•</span>
+                <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                  Series Collection Chat
+                </span>
+              </div>
+              <h1 className="text-xl font-bold text-white flex items-center gap-2">
+                <Folder className="w-5 h-5 text-indigo-400" />
+                {activeSeries.title}
+              </h1>
+              <p className="text-xs text-neutral-400 mt-0.5">
+                Grounded strictly in this series collection ({activeSeries.documentCount || 0} books/documents).
+              </p>
+            </div>
+          ) : (
+            <div>
+              <h1 className="text-xl font-bold text-white">Library Chat</h1>
+              <p className="text-sm text-neutral-400">Ask questions across all documents in your library.</p>
+            </div>
+          )}
         </div>
 
         {messages.length > 0 && (

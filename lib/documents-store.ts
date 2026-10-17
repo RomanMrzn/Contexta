@@ -28,6 +28,9 @@ export interface Document {
   readingTimeMinutes: number;
   createdAt: string;
   tags?: string[];
+  seriesId?: string;
+  seriesTitle?: string;
+  volumeNumber?: number;
 }
 
 const DATA_DIR = path.join(process.cwd(), '.data');
@@ -127,14 +130,14 @@ function ensureDataFile() {
   }
 }
 
-export function getDocuments(userId?: string): Document[] {
+export function getDocuments(userId?: string, seriesId?: string): Document[] {
   try {
     ensureDataFile();
     const data = fs.readFileSync(DATA_FILE, 'utf8');
     const docs: Document[] = JSON.parse(data);
 
     if (!userId) {
-      return docs;
+      return seriesId ? docs.filter((d) => d.seriesId === seriesId) : docs;
     }
 
     // Auto-claim legacy unassigned documents for the active user so existing uploads are preserved
@@ -150,12 +153,71 @@ export function getDocuments(userId?: string): Document[] {
       fs.writeFileSync(DATA_FILE, JSON.stringify(docs, null, 2), 'utf8');
     }
 
-    // Return strictly documents belonging to this user
-    return docs.filter((d) => d.userId === userId);
+    // Return strictly documents belonging to this user (and matching seriesId if specified)
+    return docs.filter((d) => {
+      if (d.userId !== userId) return false;
+      if (seriesId !== undefined) return d.seriesId === seriesId;
+      return true;
+    });
   } catch (error) {
     console.error('Failed to read documents store:', error);
     return [];
   }
+}
+
+export function getDocumentsBySeriesId(seriesId: string, userId: string): Document[] {
+  return getDocuments(userId, seriesId);
+}
+
+export function unassignDocumentsFromSeries(seriesId: string, userId?: string): void {
+  ensureDataFile();
+  const data = fs.readFileSync(DATA_FILE, 'utf8');
+  const docs: Document[] = JSON.parse(data);
+  let changed = false;
+
+  docs.forEach((d) => {
+    if (d.seriesId === seriesId && (!userId || d.userId === userId)) {
+      delete d.seriesId;
+      delete d.seriesTitle;
+      delete d.volumeNumber;
+      changed = true;
+    }
+  });
+
+  if (changed) {
+    fs.writeFileSync(DATA_FILE, JSON.stringify(docs, null, 2), 'utf8');
+  }
+}
+
+export function assignDocumentToSeries(
+  docId: string,
+  seriesId: string | null,
+  seriesTitle?: string,
+  volumeNumber?: number,
+  userId?: string
+): Document | null {
+  ensureDataFile();
+  const data = fs.readFileSync(DATA_FILE, 'utf8');
+  const docs: Document[] = JSON.parse(data);
+  const index = docs.findIndex((d) => d.id === docId);
+
+  if (index === -1) return null;
+  if (userId && docs[index].userId !== userId) return null;
+
+  if (seriesId) {
+    docs[index].seriesId = seriesId;
+    docs[index].seriesTitle = seriesTitle || docs[index].seriesTitle;
+    if (volumeNumber !== undefined) {
+      docs[index].volumeNumber = volumeNumber;
+    }
+  } else {
+    delete docs[index].seriesId;
+    delete docs[index].seriesTitle;
+    delete docs[index].volumeNumber;
+  }
+
+  fs.writeFileSync(DATA_FILE, JSON.stringify(docs, null, 2), 'utf8');
+  return docs[index];
 }
 
 export function getDocumentById(id: string, userId?: string): Document | null {

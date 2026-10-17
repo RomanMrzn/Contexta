@@ -28,6 +28,7 @@ import {
   ChevronRight,
   ExternalLink,
   Trash2,
+  Folder,
 } from "lucide-react";
 import { useDocuments, Document } from "@/hooks/useDocuments";
 import { DeleteDocumentModal } from "@/components/DeleteDocumentModal";
@@ -465,13 +466,25 @@ export default function DocumentDetailPage() {
           </Link>
 
           <div className="min-w-0">
-            <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-2.5 flex-wrap">
               <h1 className="text-base md:text-lg font-bold text-white truncate max-w-md" title={doc.title}>
                 {doc.title}
               </h1>
               <span className={`px-2 py-0.5 rounded text-[11px] font-semibold uppercase flex-shrink-0 border ${getBadgeStyle(doc.fileType)}`}>
                 {doc.fileType}
               </span>
+              {doc.seriesTitle && (
+                <Link
+                  href={`/library?seriesId=${doc.seriesId}`}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-indigo-500/10 text-indigo-400 border border-indigo-500/25 hover:bg-indigo-500/20 transition-colors"
+                >
+                  <Folder className="w-3 h-3" />
+                  <span>{doc.seriesTitle}</span>
+                  {doc.volumeNumber !== undefined && (
+                    <span className="font-semibold text-indigo-300">• Vol. {doc.volumeNumber}</span>
+                  )}
+                </Link>
+              )}
             </div>
             <div className="flex items-center gap-2 text-xs text-neutral-400 mt-0.5">
               <span>{doc.filename}</span>

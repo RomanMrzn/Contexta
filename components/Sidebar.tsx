@@ -1,6 +1,6 @@
 import { UserButton } from "@clerk/nextjs";
 import Link from "next/link";
-import { Book, LayoutDashboard, MessageSquare } from "lucide-react";
+import { Book, LayoutDashboard, Library, MessageSquare } from "lucide-react";
 
 export function Sidebar() {
   return (
@@ -16,6 +16,10 @@ export function Sidebar() {
         <Link href="/" className="flex items-center gap-3 px-3 py-2 text-neutral-300 hover:text-white hover:bg-neutral-800 rounded-md transition-colors">
           <LayoutDashboard className="w-5 h-5" />
           Dashboard
+        </Link>
+        <Link href="/library" className="flex items-center gap-3 px-3 py-2 text-neutral-300 hover:text-white hover:bg-neutral-800 rounded-md transition-colors">
+          <Library className="w-5 h-5" />
+          Library & Series
         </Link>
         <Link href="/documents" className="flex items-center gap-3 px-3 py-2 text-neutral-300 hover:text-white hover:bg-neutral-800 rounded-md transition-colors">
           <Book className="w-5 h-5" />

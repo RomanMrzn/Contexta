@@ -22,6 +22,9 @@ export interface Document {
   readingTimeMinutes: number;
   createdAt: string;
   tags?: string[];
+  seriesId?: string;
+  seriesTitle?: string;
+  volumeNumber?: number;
 }
 
 export function useDocuments() {
@@ -90,7 +93,11 @@ export function useDocuments() {
     fetchDocuments();
   }, [fetchDocuments]);
 
-  const uploadFile = async (file: File, customTitle?: string): Promise<Document> => {
+  const uploadFile = async (
+    file: File,
+    customTitle?: string,
+    seriesOptions?: { seriesId?: string; seriesTitle?: string; volumeNumber?: number }
+  ): Promise<Document> => {
     try {
       const parsed = await parseDocumentFile(file);
 
@@ -118,7 +125,10 @@ export function useDocuments() {
         wordCount: parsed.wordCount,
         readingTimeMinutes: parsed.readingTimeMinutes,
         createdAt: new Date().toISOString(),
-        tags: [parsed.fileType.toUpperCase()]
+        tags: [parsed.fileType.toUpperCase()],
+        seriesId: seriesOptions?.seriesId,
+        seriesTitle: seriesOptions?.seriesTitle,
+        volumeNumber: seriesOptions?.volumeNumber,
       };
 
       const saved = await apiClient<Document>("/api/documents", {

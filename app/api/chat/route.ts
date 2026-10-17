@@ -15,7 +15,7 @@ export async function POST(req: Request) {
     const currentUserId = userId;
 
     const body = await req.json();
-    const { messages, documentId, docTitle: clientTitle, docContent: clientContent } = body;
+    const { messages, documentId, docTitle: clientTitle, docContent: clientContent, seriesId } = body;
     const latestMessage = messages && messages.length > 0 ? messages[messages.length - 1].content : '';
 
     const backendUrl = process.env.BACKEND_URL;
@@ -70,7 +70,11 @@ export async function POST(req: Request) {
     }
 
     if (!targetDoc) {
-      allDocs = getDocuments(currentUserId);
+      if (seriesId) {
+        allDocs = getDocuments(currentUserId, seriesId);
+      } else {
+        allDocs = getDocuments(currentUserId);
+      }
     }
 
     // Stream descriptive, narrative answer with optional LLM integration

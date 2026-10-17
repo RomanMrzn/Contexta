@@ -20,13 +20,18 @@ import {
   LayoutGrid,
   List,
   ArrowRight,
-  Presentation
+  Presentation,
+  Folder,
+  Layers,
 } from "lucide-react";
 import { useDocuments, Document } from "@/hooks/useDocuments";
+import { useSeries } from "@/hooks/useSeries";
 import { DeleteDocumentModal } from "@/components/DeleteDocumentModal";
+import { AssignSeriesModal } from "@/components/library/AssignSeriesModal";
 
 export default function DocumentsPage() {
-  const { documents, isLoading, error, uploadFile, deleteDocument, addDocument } = useDocuments();
+  const { documents, isLoading, error, uploadFile, deleteDocument, addDocument, refetch: refetchDocs } = useDocuments();
+  const { series, assignDocument, unassignDocument, refetch: refetchSeries } = useSeries();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedType, setSelectedType] = useState<string>("all");
@@ -41,6 +46,7 @@ export default function DocumentsPage() {
 
   // Delete modal state
   const [docToDelete, setDocToDelete] = useState<Document | null>(null);
+  const [docToAssign, setDocToAssign] = useState<Document | null>(null);
 
   // Manual note modal
   const [isTextModalOpen, setIsTextModalOpen] = useState(false);
@@ -573,19 +579,41 @@ export default function DocumentsPage() {
                 <div className="space-y-4">
                   {/* Top Bar with Badge & Actions */}
                   <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span
                         className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold border ${badge.bg}`}
                       >
                         <BadgeIcon className="w-3.5 h-3.5" />
                         {badge.label}
                       </span>
+                      {doc.seriesTitle && (
+                        <Link
+                          href={`/library?seriesId=${doc.seriesId}`}
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium bg-indigo-500/10 text-indigo-400 border border-indigo-500/25 hover:bg-indigo-500/20 transition-colors"
+                          title={`Series: ${doc.seriesTitle}`}
+                        >
+                          <Folder className="w-2.5 h-2.5" />
+                          <span className="truncate max-w-[100px]">{doc.seriesTitle}</span>
+                          {doc.volumeNumber !== undefined && <span>• Vol. {doc.volumeNumber}</span>}
+                        </Link>
+                      )}
                       <span className="text-[11px] text-neutral-500 font-mono">
                         {formatBytes(doc.fileSize)}
                       </span>
                     </div>
 
                     <div className="flex items-center gap-1 opacity-70 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setDocToAssign(doc);
+                        }}
+                        title="Organize into Series / Folder"
+                        className="p-1.5 rounded-lg text-neutral-400 hover:text-indigo-400 hover:bg-indigo-500/10 transition-colors"
+                      >
+                        <Layers className="w-4 h-4" />
+                      </button>
                       <button
                         onClick={(e) => handleDownload(doc, e)}
                         title="Download file"
@@ -708,6 +736,13 @@ export default function DocumentsPage() {
                           Read
                         </Link>
                         <button
+                          onClick={() => setDocToAssign(doc)}
+                          title="Organize into Series"
+                          className="p-1.5 rounded-lg text-neutral-400 hover:text-indigo-400 hover:bg-indigo-500/10 transition-colors"
+                        >
+                          <Layers className="w-4 h-4" />
+                        </button>
+                        <button
                           onClick={(e) => handleDownload(doc, e)}
                           title="Download"
                           className="p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors"
@@ -806,6 +841,23 @@ export default function DocumentsPage() {
         onClose={() => setDocToDelete(null)}
         onConfirm={handleConfirmDelete}
         documentTitle={docToDelete?.title || ""}
+      />
+
+      {/* Assign Document to Series Modal */}
+      <AssignSeriesModal
+        isOpen={Boolean(docToAssign)}
+        onClose={() => setDocToAssign(null)}
+        document={docToAssign}
+        seriesList={series}
+        onAssign={async (seriesId, volumeNumber) => {
+          if (!docToAssign) return;
+          if (seriesId) {
+            await assignDocument(seriesId, docToAssign.id, volumeNumber);
+          } else if (docToAssign.seriesId) {
+            await unassignDocument(docToAssign.seriesId, docToAssign.id);
+          }
+          await Promise.all([refetchDocs(), refetchSeries()]);
+        }}
       />
     </div>
   );

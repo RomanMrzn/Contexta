@@ -3,14 +3,17 @@ import { auth } from '@clerk/nextjs/server';
 import { getDocuments, saveDocument, Document } from '@/lib/documents-store';
 import { parseDocumentFile } from '@/lib/document-parser';
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
     const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const docs = getDocuments(userId);
+    const { searchParams } = new URL(req.url);
+    const seriesId = searchParams.get('seriesId') || undefined;
+
+    const docs = getDocuments(userId, seriesId);
     return NextResponse.json(docs);
   } catch (error) {
     console.error('Error fetching documents:', error);
@@ -51,8 +54,11 @@ export async function POST(req: Request) {
         keyPoints: body.keyPoints || extractAutoKeyPoints(body.content),
         wordCount: words,
         readingTimeMinutes: readingTime,
+        tags: body.tags || [body.fileType ? body.fileType.toUpperCase() : 'DOCUMENT'],
         createdAt: body.createdAt || new Date().toISOString(),
-        tags: body.tags || [body.fileType ? body.fileType.toUpperCase() : 'DOCUMENT']
+        seriesId: body.seriesId || undefined,
+        seriesTitle: body.seriesTitle || undefined,
+        volumeNumber: body.volumeNumber !== undefined ? Number(body.volumeNumber) : undefined,
       };
 
       const saved = saveDocument(newDoc);
@@ -64,6 +70,10 @@ export async function POST(req: Request) {
       const formData = await req.formData();
       const file = formData.get('file') as File | null;
       const customTitle = formData.get('title') as string | null;
+      const seriesId = formData.get('seriesId') as string | null;
+      const seriesTitle = formData.get('seriesTitle') as string | null;
+      const volumeNumberRaw = formData.get('volumeNumber') as string | null;
+      const volumeNumber = volumeNumberRaw ? Number(volumeNumberRaw) : undefined;
 
       if (!file) {
         return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
@@ -87,7 +97,10 @@ export async function POST(req: Request) {
         wordCount: parsed.wordCount,
         readingTimeMinutes: parsed.readingTimeMinutes,
         createdAt: new Date().toISOString(),
-        tags: [parsed.fileType.toUpperCase()]
+        tags: [parsed.fileType.toUpperCase()],
+        seriesId: seriesId || undefined,
+        seriesTitle: seriesTitle || undefined,
+        volumeNumber,
       };
 
       const saved = saveDocument(newDoc);
